@@ -49,13 +49,13 @@ async function run() {
 
     // Blog (Dynamic)
 
-  app.get('/latest-blogs', async (req, res) => {
+    app.get('/all-blogs', async (req, res) => {
     const result = await blogCollection.find()
         .sort({ date: -1 }) 
-        .limit(4) 
         .toArray();
     res.send(result);
 });
+
 
 app.get('/blog/:id', async (req, res) => {
     const id = req.params.id;
