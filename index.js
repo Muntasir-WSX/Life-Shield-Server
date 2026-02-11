@@ -27,6 +27,7 @@ async function run() {
 
     const db = client.db("lifeShieldDB");
     const policyCollection = db.collection("policies");
+     const blogCollection = db.collection("blogs");
 
     // Policy Routes
 
@@ -45,6 +46,23 @@ async function run() {
       const result = await policyCollection.findOne(query);
       res.send(result);
     });
+
+    // Blog (Dynamic)
+
+  app.get('/latest-blogs', async (req, res) => {
+    const result = await blogCollection.find()
+        .sort({ date: -1 }) 
+        .limit(4) 
+        .toArray();
+    res.send(result);
+});
+
+app.get('/blog/:id', async (req, res) => {
+    const id = req.params.id;
+    const query = { _id: new ObjectId(id) };
+    const result = await blogCollection.findOne(query);
+    res.send(result);
+});
 
     console.log("Successfully connected to MongoDB!");
   } finally {
