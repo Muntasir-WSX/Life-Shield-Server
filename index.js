@@ -28,6 +28,7 @@ async function run() {
     const db = client.db("lifeShieldDB");
     const policyCollection = db.collection("policies");
      const blogCollection = db.collection("blogs");
+     const reviewCollection = db.collection("reviews");
 
     // Policy Routes
 
@@ -61,6 +62,23 @@ app.get('/blog/:id', async (req, res) => {
     const id = req.params.id;
     const query = { _id: new ObjectId(id) };
     const result = await blogCollection.findOne(query);
+    res.send(result);
+});
+
+
+// Review Routes
+
+app.get('/reviews', async (req, res) => {
+    const result = await reviewCollection.find().sort({ _id: -1 }).toArray();
+    res.send(result);
+});
+app.post('/reviews', async (req, res) => {
+    const review = req.body;
+    const reviewWithDate = {
+        ...review,
+        date: new Date()
+    };
+    const result = await reviewCollection.insertOne(reviewWithDate);
     res.send(result);
 });
 
