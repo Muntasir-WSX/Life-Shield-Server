@@ -29,6 +29,7 @@ async function run() {
     const policyCollection = db.collection("policies");
      const blogCollection = db.collection("blogs");
      const reviewCollection = db.collection("reviews");
+     const newsletterCollection = db.collection("newsletter");
 
     // Policy Routes
 
@@ -81,6 +82,24 @@ app.post('/reviews', async (req, res) => {
     const result = await reviewCollection.insertOne(reviewWithDate);
     res.send(result);
 });
+
+// NewsLetter Routes
+
+app.post('/newsletter', async (req, res) => {
+    const subscriber = req.body;
+
+    const existing = await newsletterCollection.findOne({ email: subscriber.email });
+    if (existing) {
+        return res.status(400).send({ message: "Already Subscribed!" });
+    }
+
+    const result = await newsletterCollection.insertOne({
+        ...subscriber,
+        subscribedAt: new Date() 
+    });
+    res.send(result);
+});
+
 
     console.log("Successfully connected to MongoDB!");
   } finally {
