@@ -31,19 +31,19 @@ async function run() {
     const userCollection = db.collection("users");
 
     // Middleware: Verify Token
-const verifyToken = (req, res, next) => {
-    if (!req.headers.authorization) {
-        return res.status(401).send({ message: 'Unauthorized Access' });
-    }
-    const token = req.headers.authorization.split(' ')[1];
-    jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, (err, decoded) => {
+    const verifyToken = (req, res, next) => {
+      if (!req.headers.authorization) {
+        return res.status(401).send({ message: "Unauthorized Access" });
+      }
+      const token = req.headers.authorization.split(" ")[1];
+      jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, (err, decoded) => {
         if (err) {
-            return res.status(401).send({ message: 'Unauthorized Access' });
+          return res.status(401).send({ message: "Unauthorized Access" });
         }
         req.decoded = decoded;
         next();
-    });
-};
+      });
+    };
 
     //  JWT API
     app.post("/jwt", async (req, res) => {
@@ -73,10 +73,20 @@ const verifyToken = (req, res, next) => {
 
     // 2.Specific Policy's Details
     app.get("/policy/:id", async (req, res) => {
-      const id = req.params.id;
-      const query = { _id: new ObjectId(id) };
-      const result = await policyCollection.findOne(query);
-      res.send(result);
+      try {
+        const id = req.params.id;
+        if (!ObjectId.isValid(id)) {
+          return res.status(400).send({ message: "Invalid ID format" });
+        }
+        const query = { _id: new ObjectId(id) };
+        const result = await policyCollection.findOne(query);
+        if (!result) {
+          return res.status(404).send({ message: "Policy not found" });
+        }
+        res.send(result);
+      } catch (error) {
+        res.status(500).send({ message: "Internal server error" });
+      }
     });
 
     // Blog (Dynamic)
@@ -90,6 +100,18 @@ const verifyToken = (req, res, next) => {
       const id = req.params.id;
       const query = { _id: new ObjectId(id) };
       const result = await blogCollection.findOne(query);
+      res.send(result);
+    });
+
+    // blog- visit increase routes
+
+    app.patch("/blog/visit/:id", async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const updateDoc = {
+        $inc: { total_visit: 1 },
+      };
+      const result = await blogCollection.updateOne(query, updateDoc);
       res.send(result);
     });
 
@@ -130,7 +152,7 @@ const verifyToken = (req, res, next) => {
 
     // user Routes
 
-    app.post("/users",async (req, res) => {
+    app.post("/users", async (req, res) => {
       const user = req.body;
       const query = { email: user.email };
       const existingUser = await userCollection.findOne(query);
@@ -148,6 +170,33 @@ const verifyToken = (req, res, next) => {
     app.get("/users", async (req, res) => {
       const result = await userCollection.find().toArray();
       res.send(result);
+    });
+
+    // 1. Get all Policy API (Search, Filter, Pagination )
+    app.get("/all-policies", async (req, res) => {
+      const { search, category, page, size } = req.query;
+      const pageNum = parseInt(page) || 0;
+      const sizeNum = parseInt(size) || 9;
+      let query = {};
+      if (search) {
+        query.title = { $regex: search, $options: "i" };
+      }
+      if (category && category !== "All") {
+        query.category = category;
+      }
+
+      try {
+        const cursor = policyCollection
+          .find(query)
+          .skip(pageNum * sizeNum)
+          .limit(sizeNum);
+        const result = await cursor.toArray();
+        const count = await policyCollection.countDocuments(query);
+
+        res.send({ result, count });
+      } catch (error) {
+        res.status(500).send({ message: "Error fetching policies" });
+      }
     });
 
     console.log("Successfully connected to MongoDB!");
