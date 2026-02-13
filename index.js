@@ -29,6 +29,7 @@ async function run() {
     const reviewCollection = db.collection("reviews");
     const newsletterCollection = db.collection("newsletter");
     const userCollection = db.collection("users");
+    const  applicationCollection = db.collection("application");
 
     // Middleware: Verify Token
     const verifyToken = (req, res, next) => {
@@ -172,7 +173,7 @@ async function run() {
       res.send(result);
     });
 
-    // 1. Get all Policy API (Search, Filter, Pagination )
+    //  Get all Policy API (Search, Filter, Pagination )
     app.get("/all-policies", async (req, res) => {
       const { search, category, page, size } = req.query;
       const pageNum = parseInt(page) || 0;
@@ -198,6 +199,13 @@ async function run() {
         res.status(500).send({ message: "Error fetching policies" });
       }
     });
+
+    //application from customer from planned quote
+    app.post("/applications", async (req, res) => {
+  const application = req.body;
+  const result = await applicationCollection.insertOne(application);
+  res.send(result);
+});
 
     console.log("Successfully connected to MongoDB!");
   } finally {
