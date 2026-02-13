@@ -1,8 +1,8 @@
-const express = require('express');
-const cors = require('cors');
-require('dotenv').config();
-const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
-
+const express = require("express");
+const cors = require("cors");
+require("dotenv").config();
+const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
+const jwt = require("jsonwebtoken");
 const app = express();
 const port = process.env.PORT || 5000;
 
@@ -18,31 +18,61 @@ const client = new MongoClient(uri, {
     version: ServerApiVersion.v1,
     strict: true,
     deprecationErrors: true,
-  }
+  },
 });
 
 async function run() {
   try {
-    
-
     const db = client.db("lifeShieldDB");
     const policyCollection = db.collection("policies");
-     const blogCollection = db.collection("blogs");
-     const reviewCollection = db.collection("reviews");
-     const newsletterCollection = db.collection("newsletter");
+    const blogCollection = db.collection("blogs");
+    const reviewCollection = db.collection("reviews");
+    const newsletterCollection = db.collection("newsletter");
+    const userCollection = db.collection("users");
+
+    // Middleware: Verify Token
+const verifyToken = (req, res, next) => {
+    if (!req.headers.authorization) {
+        return res.status(401).send({ message: 'Unauthorized Access' });
+    }
+    const token = req.headers.authorization.split(' ')[1];
+    jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, (err, decoded) => {
+        if (err) {
+            return res.status(401).send({ message: 'Unauthorized Access' });
+        }
+        req.decoded = decoded;
+        next();
+    });
+};
+
+    //  JWT API
+    app.post("/jwt", async (req, res) => {
+      const user = req.body;
+      const token = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET, {
+        expiresIn: "1h",
+      });
+      res.send({ token });
+    });
+
+    app.get("/users/role/:email", async (req, res) => {
+      const email = req.params.email;
+      const user = await userCollection.findOne({ email });
+      res.send({ role: user?.role });
+    });
 
     // Policy Routes
 
-    app.get('/popular-policies', async (req, res) => {
-      const result = await policyCollection.find()
-        .sort({ purchased_count: -1 }) 
-        .limit(6) 
+    app.get("/popular-policies", async (req, res) => {
+      const result = await policyCollection
+        .find()
+        .sort({ purchased_count: -1 })
+        .limit(6)
         .toArray();
       res.send(result);
     });
 
-    // 2.Specific Policy's Details 
-    app.get('/policy/:id', async (req, res) => {
+    // 2.Specific Policy's Details
+    app.get("/policy/:id", async (req, res) => {
       const id = req.params.id;
       const query = { _id: new ObjectId(id) };
       const result = await policyCollection.findOne(query);
@@ -51,65 +81,83 @@ async function run() {
 
     // Blog (Dynamic)
 
-    app.get('/all-blogs', async (req, res) => {
-    const result = await blogCollection.find()
-        .sort({ date: -1 }) 
-        .toArray();
-    res.send(result);
-});
-
-
-app.get('/blog/:id', async (req, res) => {
-    const id = req.params.id;
-    const query = { _id: new ObjectId(id) };
-    const result = await blogCollection.findOne(query);
-    res.send(result);
-});
-
-
-// Review Routes
-
-app.get('/reviews', async (req, res) => {
-    const result = await reviewCollection.find().sort({ _id: -1 }).toArray();
-    res.send(result);
-});
-app.post('/reviews', async (req, res) => {
-    const review = req.body;
-    const reviewWithDate = {
-        ...review,
-        date: new Date()
-    };
-    const result = await reviewCollection.insertOne(reviewWithDate);
-    res.send(result);
-});
-
-// NewsLetter Routes
-
-app.post('/newsletter', async (req, res) => {
-    const subscriber = req.body;
-
-    const existing = await newsletterCollection.findOne({ email: subscriber.email });
-    if (existing) {
-        return res.status(400).send({ message: "Already Subscribed!" });
-    }
-
-    const result = await newsletterCollection.insertOne({
-        ...subscriber,
-        subscribedAt: new Date() 
+    app.get("/all-blogs", async (req, res) => {
+      const result = await blogCollection.find().sort({ date: -1 }).toArray();
+      res.send(result);
     });
-    res.send(result);
-});
 
+    app.get("/blog/:id", async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const result = await blogCollection.findOne(query);
+      res.send(result);
+    });
+
+    // Review Routes
+
+    app.get("/reviews", async (req, res) => {
+      const result = await reviewCollection.find().sort({ _id: -1 }).toArray();
+      res.send(result);
+    });
+    app.post("/reviews", async (req, res) => {
+      const review = req.body;
+      const reviewWithDate = {
+        ...review,
+        date: new Date(),
+      };
+      const result = await reviewCollection.insertOne(reviewWithDate);
+      res.send(result);
+    });
+
+    // NewsLetter Routes
+
+    app.post("/newsletter", async (req, res) => {
+      const subscriber = req.body;
+
+      const existing = await newsletterCollection.findOne({
+        email: subscriber.email,
+      });
+      if (existing) {
+        return res.status(400).send({ message: "Already Subscribed!" });
+      }
+
+      const result = await newsletterCollection.insertOne({
+        ...subscriber,
+        subscribedAt: new Date(),
+      });
+      res.send(result);
+    });
+
+    // user Routes
+
+    app.post("/users",async (req, res) => {
+      const user = req.body;
+      const query = { email: user.email };
+      const existingUser = await userCollection.findOne(query);
+
+      if (existingUser) {
+        return res.send({ message: "User already exists", insertedId: null });
+      }
+
+      const result = await userCollection.insertOne(user);
+      res.send(result);
+    });
+
+    // --- getting all user (admin part)
+
+    app.get("/users", async (req, res) => {
+      const result = await userCollection.find().toArray();
+      res.send(result);
+    });
 
     console.log("Successfully connected to MongoDB!");
   } finally {
-    
   }
 }
 run().catch(console.dir);
 
-app.get('/', (req, res) => {
-  res.send('Life Shield Server is running...');
+app.get("/", (req, res) => {
+  res.send("Life Shield Server is running...");
 });
 
 app.listen(port, () => {
