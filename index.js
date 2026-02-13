@@ -207,6 +207,21 @@ async function run() {
   res.send(result);
 });
 
+// profile save API----
+app.patch("/users/:email", async (req, res) => {
+  const email = req.params.email;
+  const updatedData = req.body;
+  const filter = { email: email };
+  const updateDoc = {
+    $set: {
+      name: updatedData.name,
+      photo: updatedData.photo,
+    },
+  };
+  const result = await userCollection.updateOne(filter, updateDoc);
+  res.send(result);
+});
+
     console.log("Successfully connected to MongoDB!");
   } finally {
   }
