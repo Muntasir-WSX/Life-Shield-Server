@@ -21,6 +21,8 @@ const client = new MongoClient(uri, {
   },
 });
 
+const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
+
 async function run() {
   try {
     const db = client.db("lifeShieldDB");
@@ -288,6 +290,44 @@ app.patch("/users/:email", async (req, res) => {
   const result = await userCollection.updateOne(filter, updateDoc);
   res.send(result);
 });
+
+// payment routes
+
+app.post("/create-payment-intent", async (req, res) => {
+  const { price } = req.body;
+  const amount = parseInt(price * 100);
+
+  if (!price || amount < 1) {
+    return res.status(400).send({ message: "Invalid amount" });
+  }
+
+  const paymentIntent = await stripe.paymentIntents.create({
+    amount: amount,
+    currency: "usd", 
+    payment_method_types: ["card"],
+  });
+
+  res.send({
+    clientSecret: paymentIntent.client_secret,
+  });
+});
+
+app.patch("/applications/payment/:id", async (req, res) => {
+    const id = req.params.id;
+    const payment = req.body;
+    const filter = { _id: new ObjectId(id) };
+    const updateDoc = {
+        $set: {
+            status: 'Paid',
+            transactionId: payment.transactionId,
+            paymentDate: payment.date,
+            paidAmount: payment.amount
+        },
+    };
+    const result = await applicationCollection.updateOne(filter, updateDoc);
+    res.send(result);
+});
+
 
     console.log("Successfully connected to MongoDB!");
   } finally {
