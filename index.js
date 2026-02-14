@@ -46,6 +46,18 @@ async function run() {
       });
     };
 
+    // Middleware: Verify Admin 
+const verifyAdmin = async (req, res, next) => {
+    const email = req.decoded.email;
+    const query = { email: email };
+    const user = await userCollection.findOne(query);
+    const isAdmin = user?.role === "admin";
+    if (!isAdmin) {
+        return res.status(403).send({ message: "Forbidden Access! Admin Only." });
+    }
+    next();
+};
+
     //  JWT API
     app.post("/jwt", async (req, res) => {
       const user = req.body;
@@ -166,12 +178,35 @@ async function run() {
       res.send(result);
     });
 
-    // --- getting all user (admin part)
 
-    app.get("/users", async (req, res) => {
-      const result = await userCollection.find().toArray();
-      res.send(result);
-    });
+
+   // --- User Management (Admin Only) ---
+
+// Getting all user (With Protection)
+app.get("/users", verifyToken, verifyAdmin, async (req, res) => {
+    const result = await userCollection.find().toArray();
+    res.send(result);
+});
+
+// Change User Role (Promote/Demote)
+app.patch("/users/role/:id", verifyToken, verifyAdmin, async (req, res) => {
+    const id = req.params.id;
+    const { role } = req.body; 
+    const filter = { _id: new ObjectId(id) };
+    const updateDoc = {
+        $set: { role: role },
+    };
+    const result = await userCollection.updateOne(filter, updateDoc);
+    res.send(result);
+});
+
+// User remove (Optional but useful)
+app.delete("/users/:id", verifyToken, verifyAdmin, async (req, res) => {
+    const id = req.params.id;
+    const query = { _id: new ObjectId(id) };
+    const result = await userCollection.deleteOne(query);
+    res.send(result);
+});
 
     //  Get all Policy API (Search, Filter, Pagination )
     app.get("/all-policies", async (req, res) => {
@@ -199,6 +234,38 @@ async function run() {
         res.status(500).send({ message: "Error fetching policies" });
       }
     });
+
+    // Add new Policy
+app.post("/policies", verifyToken, verifyAdmin, async (req, res) => {
+    const policy = req.body;
+    const result = await policyCollection.insertOne(policy);
+    res.send(result);
+});
+
+// Update Policy
+app.patch("/policies/:id", verifyToken, verifyAdmin, async (req, res) => {
+    const id = req.params.id;
+    const updatedPolicy = req.body;
+    const filter = { _id: new ObjectId(id) };
+    const updateDoc = { $set: updatedPolicy };
+    const result = await policyCollection.updateOne(filter, updateDoc);
+    res.send(result);
+});
+
+// Delete Policy
+app.delete("/policies/:id", verifyToken, verifyAdmin, async (req, res) => {
+    const id = req.params.id;
+    const query = { _id: new ObjectId(id) };
+    const result = await policyCollection.deleteOne(query);
+    res.send(result);
+});
+
+// Admin Can see All Agents
+app.get("/users/agents", verifyToken, verifyAdmin, async (req, res) => {
+    const query = { role: "agent" };
+    const result = await userCollection.find(query).toArray();
+    res.send(result);
+});
 
     //application from customer from planned quote
     app.post("/applications", async (req, res) => {
