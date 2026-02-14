@@ -324,7 +324,16 @@ app.patch("/applications/payment/:id", async (req, res) => {
             paidAmount: payment.amount
         },
     };
+
+    
     const result = await applicationCollection.updateOne(filter, updateDoc);
+    res.send(result);
+});
+
+app.get("/applied-policies/:email", async (req, res) => {
+    const email = req.params.email;
+    const query = { applicantEmail: email, status: 'Paid' }; 
+    const result = await applicationCollection.find(query).toArray();
     res.send(result);
 });
 
