@@ -330,21 +330,20 @@ app.patch("/applications/payment/:id", async (req, res) => {
     const filter = { _id: new ObjectId(id) };
     const updateDoc = {
         $set: {
-            status: 'Paid',
+            status: 'Awaiting Approval',
             transactionId: payment.transactionId,
             paymentDate: payment.date,
-            paidAmount: payment.amount
+            paidAmount: payment.amount,
+            paymentStatus: 'Paid'
         },
-    };
-
-    
+      };
     const result = await applicationCollection.updateOne(filter, updateDoc);
     res.send(result);
 });
 
 app.get("/applied-policies/:email", async (req, res) => {
     const email = req.params.email;
-    const query = { applicantEmail: email, status: 'Paid' }; 
+    const query = { applicantEmail: email }; 
     const result = await applicationCollection.find(query).toArray();
     res.send(result);
 });
@@ -369,6 +368,47 @@ app.patch("/applications/assign/:id", verifyToken, verifyAdmin, async (req, res)
 // 2.Get all aplication
 app.get("/all-applications", verifyToken, verifyAdmin, async (req, res) => {
     const result = await applicationCollection.find().toArray();
+    res.send(result);
+});
+
+// Delete Application (Admin Only)
+app.delete("/applications/:id", verifyToken, verifyAdmin, async (req, res) => {
+    const id = req.params.id;
+    const query = { _id: new ObjectId(id) };
+    const result = await applicationCollection.deleteOne(query);
+    res.send(result);
+});
+
+// Agents API
+//1.assigned application api from admin to agents
+app.get("/agent-applications/:email", verifyToken, async (req, res) => {
+    const email = req.params.email;
+    if (req.decoded.email !== email) {
+        return res.status(403).send({ message: "Forbidden Access" });
+    }
+    const query = { agentEmail: email };
+    const result = await applicationCollection.find(query).toArray();
+    res.send(result);
+});
+
+// 2. status update & purchase count + 
+app.patch("/applications/agent-status/:id", verifyToken, async (req, res) => {
+    const id = req.params.id;
+    const { status, policyId } = req.body;
+    const filter = { _id: new ObjectId(id) };
+
+    const updateDoc = {
+        $set: { status: status },
+    };
+
+    const result = await applicationCollection.updateOne(filter, updateDoc);
+    if (status === "Approved" && policyId) {
+        const policyFilter = { _id: new ObjectId(policyId) };
+        await policyCollection.updateOne(policyFilter, {
+            $inc: { purchased_count: 1 }
+        });
+    }
+
     res.send(result);
 });
 
