@@ -291,6 +291,18 @@ app.patch("/users/:email", async (req, res) => {
   res.send(result);
 });
 
+// Status Update API (Approve/Reject/Assign)
+app.patch("/applications/status/:id", verifyToken, verifyAdmin, async (req, res) => {
+    const id = req.params.id;
+    const { status } = req.body;
+    const filter = { _id: new ObjectId(id) };
+    const updateDoc = {
+        $set: { status: status },
+    };
+    const result = await applicationCollection.updateOne(filter, updateDoc);
+    res.send(result);
+});
+
 // payment routes
 
 app.post("/create-payment-intent", async (req, res) => {
@@ -337,6 +349,28 @@ app.get("/applied-policies/:email", async (req, res) => {
     res.send(result);
 });
 
+
+// assign agent API
+app.patch("/applications/assign/:id", verifyToken, verifyAdmin, async (req, res) => {
+    const id = req.params.id;
+    const { agentEmail, agentName, status } = req.body;
+    const filter = { _id: new ObjectId(id) };
+    const updateDoc = {
+        $set: { 
+            agentEmail: agentEmail,
+            agentName: agentName,
+            status: status 
+        },
+    };
+    const result = await applicationCollection.updateOne(filter, updateDoc);
+    res.send(result);
+});
+
+// 2.Get all aplication
+app.get("/all-applications", verifyToken, verifyAdmin, async (req, res) => {
+    const result = await applicationCollection.find().toArray();
+    res.send(result);
+});
 
     console.log("Successfully connected to MongoDB!");
   } finally {
