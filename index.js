@@ -190,6 +190,21 @@ app.get("/users", verifyToken, verifyAdmin, async (req, res) => {
     res.send(result);
 });
 
+app.get("/my-approved-policies/:email", verifyToken, async (req, res) => {
+    try {
+        const email = req.params.email;
+        if (req.decoded.email !== email) {
+            return res.status(403).send({ message: "Forbidden Access" });
+        }
+        
+        const query = { applicantEmail: email };
+        const result = await applicationCollection.find(query).toArray();
+        res.send(result);
+    } catch (error) {
+        res.status(500).send({ message: "Server Error" });
+    }
+});
+
 // Change User Role (Promote/Demote)
 app.patch("/users/role/:id", verifyToken, verifyAdmin, async (req, res) => {
     const id = req.params.id;
@@ -202,7 +217,7 @@ app.patch("/users/role/:id", verifyToken, verifyAdmin, async (req, res) => {
     res.send(result);
 });
 
-// User remove (Optional but useful)
+// User remove 
 app.delete("/users/:id", verifyToken, verifyAdmin, async (req, res) => {
     const id = req.params.id;
     const query = { _id: new ObjectId(id) };
