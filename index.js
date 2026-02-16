@@ -367,6 +367,61 @@ app.patch("/applications/agent-status/:id", verifyToken, async (req, res) => {
 
 
 
+
+// --------------------------------- -------------------------------AGENT ---------------------------------------------------------------------------
+
+/// mange blogs for both admin & agent
+
+
+app.get("/my-blogs/:email", verifyToken, async (req, res) => {
+    const email = req.params.email;
+    const decodedEmail = req.decoded.email;
+    const user = await userCollection.findOne({ email: decodedEmail });
+    const isAdmin = user?.role === "admin";
+
+    let query = { authorEmail: email }; 
+    if (isAdmin) {
+        query = {};
+    }
+    const result = await blogCollection.find(query).sort({ date: -1 }).toArray();
+    res.send(result);
+});
+
+
+app.post("/blogs", verifyToken, async (req, res) => {
+    const blog = req.body;
+    const result = await blogCollection.insertOne(blog);
+    res.send(result);
+});
+
+
+app.delete("/blogs/:id", verifyToken, async (req, res) => {
+    const id = req.params.id;
+    const query = { _id: new ObjectId(id) };
+    const result = await blogCollection.deleteOne(query);
+    res.send(result);
+});
+
+app.patch("/blogs/:id", verifyToken, async (req, res) => {
+    const id = req.params.id;
+    const filter = { _id: new ObjectId(id) };
+    const updatedDoc = {
+        $set: {
+            title: req.body.title,
+            content: req.body.content,
+            image: req.body.image,
+            // date আপডেট করতে চাইলে দিতে পারো, নাহলে থাক
+        }
+    };
+    const result = await blogCollection.updateOne(filter, updatedDoc);
+    res.send(result);
+});
+
+
+// --------------------------------- -------------------------------AGENT ---------------------------------------------------------------------------
+
+
+
 // profile save API----
 app.patch("/users/:email", async (req, res) => {
   const email = req.params.email;
