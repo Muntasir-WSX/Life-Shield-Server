@@ -183,7 +183,7 @@ const verifyAdmin = async (req, res, next) => {
     // customer claim policy
 app.get("/my-approved-policies/:email", verifyToken, async (req, res) => {
     const email = req.params.email;
-    const query = { userEmail: email, status: "Approved" }; // status Approved মানে পলিসিটি কেনা হয়েছে
+    const query = { applicantEmail: email, status: "Approved" }; // status Approved মানে পলিসিটি কেনা হয়েছে
     const result = await applicationCollection.find(query).toArray();
     res.send(result);
 });
@@ -221,7 +221,7 @@ app.get("/my-approved-policies/:email", verifyToken, async (req, res) => {
             return res.status(403).send({ message: "Forbidden Access" });
         }
         
-        const query = { applicantEmail: email };
+        const query = { applicantEmail: email , status: "Approved" };
         const result = await applicationCollection.find(query).toArray();
         res.send(result);
     } catch (error) {
@@ -317,7 +317,7 @@ app.get("/users/agents", verifyToken, verifyAdmin, async (req, res) => {
 
 // Get all successful transactions (Admin Only)
 app.get("/admin/transactions", verifyToken, verifyAdmin, async (req, res) => {
-    const query = { paymentStatus: "Paid" }; // শুধুমাত্র যারা টাকা দিয়েছে
+    const query = { paymentStatus: "Paid" };
     const result = await applicationCollection.find(query).sort({ paymentDate: -1 }).toArray();
     res.send(result);
 });
