@@ -182,7 +182,7 @@ const verifyAdmin = async (req, res, next) => {
 
 
 
-   // --- User Management (Admin Only) ---
+// -----------------------------------------------------------------ADMIN ---------------------------------------------------------------------------
 
 // Getting all user (With Protection)
 app.get("/users", verifyToken, verifyAdmin, async (req, res) => {
@@ -291,6 +291,82 @@ app.get("/users/agents", verifyToken, verifyAdmin, async (req, res) => {
   res.send(result);
 });
 
+// Get all successful transactions (Admin Only)
+app.get("/admin/transactions", verifyToken, verifyAdmin, async (req, res) => {
+    const query = { paymentStatus: "Paid" }; // শুধুমাত্র যারা টাকা দিয়েছে
+    const result = await applicationCollection.find(query).sort({ paymentDate: -1 }).toArray();
+    res.send(result);
+});
+
+
+// assign agent API
+app.patch("/applications/assign/:id", verifyToken, verifyAdmin, async (req, res) => {
+    const id = req.params.id;
+    const { agentEmail, agentName, status } = req.body;
+    const filter = { _id: new ObjectId(id) };
+    const updateDoc = {
+        $set: { 
+            agentEmail: agentEmail,
+            agentName: agentName,
+            status: status 
+        },
+    };
+    const result = await applicationCollection.updateOne(filter, updateDoc);
+    res.send(result);
+});
+
+// 2.Get all aplication
+app.get("/all-applications", verifyToken, verifyAdmin, async (req, res) => {
+    const result = await applicationCollection.find().toArray();
+    res.send(result);
+});
+
+// Delete Application (Admin Only)
+app.delete("/applications/:id", verifyToken, verifyAdmin, async (req, res) => {
+    const id = req.params.id;
+    const query = { _id: new ObjectId(id) };
+    const result = await applicationCollection.deleteOne(query);
+    res.send(result);
+});
+
+// Agents API
+//1.assigned application api from admin to agents
+app.get("/agent-applications/:email", verifyToken, async (req, res) => {
+    const email = req.params.email;
+    if (req.decoded.email !== email) {
+        return res.status(403).send({ message: "Forbidden Access" });
+    }
+    const query = { agentEmail: email };
+    const result = await applicationCollection.find(query).toArray();
+    res.send(result);
+});
+
+// 2. status update & purchase count + 
+app.patch("/applications/agent-status/:id", verifyToken, async (req, res) => {
+    const id = req.params.id;
+    const { status, policyId } = req.body;
+    const filter = { _id: new ObjectId(id) };
+
+    const updateDoc = {
+        $set: { status: status },
+    };
+
+    const result = await applicationCollection.updateOne(filter, updateDoc);
+    if (status === "Approved" && policyId) {
+        const policyFilter = { _id: new ObjectId(policyId) };
+        await policyCollection.updateOne(policyFilter, {
+            $inc: { purchased_count: 1 }
+        });
+    }
+
+    res.send(result);
+});
+
+
+// --------------------------------- -------------------------------ADMIN ---------------------------------------------------------------------------
+
+
+
 // profile save API----
 app.patch("/users/:email", async (req, res) => {
   const email = req.params.email;
@@ -364,68 +440,7 @@ app.get("/applied-policies/:email", async (req, res) => {
 });
 
 
-// assign agent API
-app.patch("/applications/assign/:id", verifyToken, verifyAdmin, async (req, res) => {
-    const id = req.params.id;
-    const { agentEmail, agentName, status } = req.body;
-    const filter = { _id: new ObjectId(id) };
-    const updateDoc = {
-        $set: { 
-            agentEmail: agentEmail,
-            agentName: agentName,
-            status: status 
-        },
-    };
-    const result = await applicationCollection.updateOne(filter, updateDoc);
-    res.send(result);
-});
 
-// 2.Get all aplication
-app.get("/all-applications", verifyToken, verifyAdmin, async (req, res) => {
-    const result = await applicationCollection.find().toArray();
-    res.send(result);
-});
-
-// Delete Application (Admin Only)
-app.delete("/applications/:id", verifyToken, verifyAdmin, async (req, res) => {
-    const id = req.params.id;
-    const query = { _id: new ObjectId(id) };
-    const result = await applicationCollection.deleteOne(query);
-    res.send(result);
-});
-
-// Agents API
-//1.assigned application api from admin to agents
-app.get("/agent-applications/:email", verifyToken, async (req, res) => {
-    const email = req.params.email;
-    if (req.decoded.email !== email) {
-        return res.status(403).send({ message: "Forbidden Access" });
-    }
-    const query = { agentEmail: email };
-    const result = await applicationCollection.find(query).toArray();
-    res.send(result);
-});
-
-// 2. status update & purchase count + 
-app.patch("/applications/agent-status/:id", verifyToken, async (req, res) => {
-    const id = req.params.id;
-    const { status, policyId } = req.body;
-    const filter = { _id: new ObjectId(id) };
-
-    const updateDoc = {
-        $set: { status: status },
-    };
-
-    const result = await applicationCollection.updateOne(filter, updateDoc);
-    if (status === "Approved" && policyId) {
-        const policyFilter = { _id: new ObjectId(policyId) };
-        await policyCollection.updateOne(policyFilter, {
-            $inc: { purchased_count: 1 }
-        });
-    }
-
-    res.send(result);
-});
 
     console.log("Successfully connected to MongoDB!");
   } finally {
