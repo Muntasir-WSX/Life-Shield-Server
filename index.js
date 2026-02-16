@@ -180,6 +180,30 @@ const verifyAdmin = async (req, res, next) => {
       res.send(result);
     });
 
+    // customer claim policy
+app.get("/my-approved-policies/:email", verifyToken, async (req, res) => {
+    const email = req.params.email;
+    const query = { userEmail: email, status: "Approved" }; // status Approved মানে পলিসিটি কেনা হয়েছে
+    const result = await applicationCollection.find(query).toArray();
+    res.send(result);
+});
+
+// pending the sended request
+app.patch("/applications/claim/:id", verifyToken, async (req, res) => {
+    const id = req.params.id;
+    const claimData = req.body;
+    const filter = { _id: new ObjectId(id) };
+    const updateDoc = {
+        $set: { 
+            claimStatus: "Pending",
+            claimReason: claimData.claimReason,
+            claimDocument: claimData.claimDocument
+        },
+    };
+    const result = await applicationCollection.updateOne(filter, updateDoc);
+    res.send(result);
+});
+
 
 
 // -----------------------------------------------------------------ADMIN ---------------------------------------------------------------------------
@@ -414,6 +438,28 @@ app.patch("/blogs/:id", verifyToken, async (req, res) => {
         }
     };
     const result = await blogCollection.updateOne(filter, updatedDoc);
+    res.send(result);
+});
+
+
+// claim policyclearence
+
+app.get("/claim-policies/:email", verifyToken, async (req, res) => {
+    const email = req.params.email;
+    if (req.decoded.email !== email) {
+        return res.status(403).send({ message: "Forbidden Access" });
+    }
+    const query = { agentEmail: email, claimStatus: "Pending" };
+    const result = await applicationCollection.find(query).toArray();
+    res.send(result);
+});
+app.patch("/applications/approve-claim/:id", verifyToken, async (req, res) => {
+    const id = req.params.id;
+    const filter = { _id: new ObjectId(id) };
+    const updateDoc = {
+        $set: { claimStatus: "Approved" },
+    };
+    const result = await applicationCollection.updateOne(filter, updateDoc);
     res.send(result);
 });
 
