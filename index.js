@@ -6,9 +6,17 @@ const jwt = require("jsonwebtoken");
 const app = express();
 const port = process.env.PORT || 5000;
 
+
+
 // Middleware
 app.use(cors());
 app.use(express.json());
+
+
+const decoded = Buffer.from(process.env.FB_SERVICE_KEY,'base64').toString('utf8');
+
+const serviceAccount = JSON.parse(decoded);
+
 
 // MongoDB Connection
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@simple-crud-server.a0arf8b.mongodb.net/?retryWrites=true&w=majority&appName=simple-crud-server`;
