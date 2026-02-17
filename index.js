@@ -326,9 +326,32 @@ app.get("/users/agents", verifyToken, verifyAdmin, async (req, res) => {
 
 // Get all successful transactions (Admin Only)
 app.get("/admin/transactions", verifyToken, verifyAdmin, async (req, res) => {
-    const query = { paymentStatus: "Paid" };
-    const result = await applicationCollection.find(query).sort({ paymentDate: -1 }).toArray();
-    res.send(result);
+    const { page, size, search } = req.query;
+    const pageNum = parseInt(page) || 0;
+    const sizeNum = parseInt(size) || 10;
+  
+    let query = { paymentStatus: "Paid" };
+    if (search) {
+        query.$or = [
+            { applicantEmail: { $regex: search, $options: "i" } },
+            { policyTitle: { $regex: search, $options: "i" } },
+            { transactionId: { $regex: search, $options: "i" } }
+        ];
+    }
+
+    try {
+        const result = await applicationCollection.find(query)
+            .sort({ paymentDate: -1 })
+            .skip(pageNum * sizeNum)
+            .limit(sizeNum)
+            .toArray();
+            
+        const count = await applicationCollection.countDocuments(query);
+        
+        res.send({ result, count });
+    } catch (error) {
+        res.status(500).send({ message: "Error fetching transactions" });
+    }
 });
 
 
