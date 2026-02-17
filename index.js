@@ -138,7 +138,7 @@ const verifyAdmin = async (req, res, next) => {
     });
    app.post("/reviews", async (req, res) => {
   const review = req.body;
-  
+
   const finalReview = {
     ...review,
     date: review.date ? new Date(review.date) : new Date(),
@@ -535,10 +535,23 @@ app.patch("/applications/payment/:id", async (req, res) => {
 });
 
 app.get("/applied-policies/:email", async (req, res) => {
-    const email = req.params.email;
-    const query = { applicantEmail: email }; 
-    const result = await applicationCollection.find(query).toArray();
-    res.send(result);
+    try {
+        const email = req.params.email;
+        const page = parseInt(req.query.page) || 0;
+        const size = parseInt(req.query.size) || 5;
+        const query = { applicantEmail: email }; 
+
+        const result = await applicationCollection.find(query)
+            .sort({ _id: -1 }) 
+            .skip(page * size)
+            .limit(size)
+            .toArray();
+
+        const count = await applicationCollection.countDocuments(query);
+        res.send({ result, count }); 
+    } catch (error) {
+        res.status(500).send({ message: "Internal Server Error" });
+    }
 });
 
 
