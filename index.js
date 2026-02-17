@@ -472,6 +472,10 @@ app.patch("/applications/approve-claim/:id", verifyToken, async (req, res) => {
     res.send(result);
 });
 
+app.get("/policies-list", async (req, res) => {
+    const result = await policyCollection.find().toArray();
+    res.send(result); 
+});
 
 // --------------------------------- -------------------------------AGENT ---------------------------------------------------------------------------
 
