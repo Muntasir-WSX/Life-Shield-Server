@@ -183,10 +183,18 @@ const verifyAdmin = async (req, res, next) => {
 
     // customer claim policy
 app.get("/my-approved-policies/:email", verifyToken, async (req, res) => {
-    const email = req.params.email;
-    const query = { applicantEmail: email, status: "Approved" }; // status Approved মানে পলিসিটি কেনা হয়েছে
-    const result = await applicationCollection.find(query).toArray();
-    res.send(result);
+   try{ const email = req.params.email;
+    const page = parseInt(req.query.page) || 0;
+        const size = parseInt(req.query.size) || 5;
+    const query = { applicantEmail: email, status: "Approved" }; 
+    const result = await applicationCollection.find(query).skip(page * size)
+            .limit(size).toArray();
+            const count = await applicationCollection.countDocuments(query);
+
+   res.send({ result, count }); 
+    } catch (error) {
+        res.status(500).send({ message: "Server Error" });
+    }
 });
 
 // pending the sended request
