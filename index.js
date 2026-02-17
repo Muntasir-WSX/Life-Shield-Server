@@ -398,12 +398,26 @@ app.delete("/applications/:id", verifyToken, verifyAdmin, async (req, res) => {
 //1.assigned application api from admin to agents
 app.get("/agent-applications/:email", verifyToken, async (req, res) => {
     const email = req.params.email;
+    const page = parseInt(req.query.page) || 0;
+    const size = parseInt(req.query.size) || 10;
+
     if (req.decoded.email !== email) {
         return res.status(403).send({ message: "Forbidden Access" });
     }
+
     const query = { agentEmail: email };
-    const result = await applicationCollection.find(query).toArray();
-    res.send(result);
+    try {
+        const result = await applicationCollection.find(query)
+            .sort({ _id: -1 }) 
+            .skip(page * size)
+            .limit(size)
+            .toArray();
+
+        const count = await applicationCollection.countDocuments(query);
+        res.send({ result, count });
+    } catch (error) {
+        res.status(500).send({ message: "Error fetching agent applications" });
+    }
 });
 
 // 2. status update & purchase count + 
@@ -438,18 +452,33 @@ app.patch("/applications/agent-status/:id", verifyToken, async (req, res) => {
 /// mange blogs for both admin & agent
 
 
+// manage blogs for both admin & agent with pagination
 app.get("/my-blogs/:email", verifyToken, async (req, res) => {
     const email = req.params.email;
     const decodedEmail = req.decoded.email;
+    const page = parseInt(req.query.page) || 0;
+    const size = parseInt(req.query.size) || 10;
+
     const user = await userCollection.findOne({ email: decodedEmail });
     const isAdmin = user?.role === "admin";
 
-    let query = { authorEmail: email }; 
+    let query = { authorEmail: email };
     if (isAdmin) {
-        query = {};
+        query = {}; 
     }
-    const result = await blogCollection.find(query).sort({ date: -1 }).toArray();
-    res.send(result);
+
+    try {
+        const result = await blogCollection.find(query)
+            .sort({ date: -1 })
+            .skip(page * size)
+            .limit(size)
+            .toArray();
+
+        const count = await blogCollection.countDocuments(query);
+        res.send({ result, count });
+    } catch (error) {
+        res.status(500).send({ message: "Error fetching blogs" });
+    }
 });
 
 
