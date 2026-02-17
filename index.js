@@ -136,15 +136,16 @@ const verifyAdmin = async (req, res, next) => {
       const result = await reviewCollection.find().sort({ _id: -1 }).toArray();
       res.send(result);
     });
-    app.post("/reviews", async (req, res) => {
-      const review = req.body;
-      const reviewWithDate = {
-        ...review,
-        date: new Date(),
-      };
-      const result = await reviewCollection.insertOne(reviewWithDate);
-      res.send(result);
-    });
+   app.post("/reviews", async (req, res) => {
+  const review = req.body;
+  
+  const finalReview = {
+    ...review,
+    date: review.date ? new Date(review.date) : new Date(),
+  };
+  const result = await reviewCollection.insertOne(finalReview);
+  res.send(result);
+});
 
     // NewsLetter Routes
 
