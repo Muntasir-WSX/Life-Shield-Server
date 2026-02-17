@@ -350,8 +350,17 @@ app.patch("/applications/assign/:id", verifyToken, verifyAdmin, async (req, res)
 
 // 2.Get all aplication
 app.get("/all-applications", verifyToken, verifyAdmin, async (req, res) => {
-    const result = await applicationCollection.find().toArray();
-    res.send(result);
+    const page = parseInt(req.query.page);
+    const size = parseInt(req.query.size);
+
+    const result = await applicationCollection.find()
+        .skip(page * size)
+        .limit(size)
+        .toArray();
+    
+    const count = await applicationCollection.countDocuments();
+    
+    res.send({ result, count });
 });
 
 // Delete Application (Admin Only)
